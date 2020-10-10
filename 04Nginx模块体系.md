@@ -228,7 +228,7 @@ typedef struct {
 
 如果从C++得视角来观察Nginx的模块架构，那么ngx_module_t就是一个抽象基类，ngx_core_module_t、ngx_http_module_t以ctx的方式继承了ngx_module_t，最后在各个具体模块实现了类的函数指针，是它们的实现类。
 
-![Nginx模块的类图](.\images\Nginx模块的类图.jpg)
+![Nginx模块的类图](./images/Nginx模块的类图.jpg)
 
 ### 模块的组织方式
 

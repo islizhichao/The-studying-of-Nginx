@@ -50,6 +50,10 @@ http、server、location这是http模块定义的，在处理一个请求的时�
 
 ### 处理HTTP头部的请求
 
+
+
+
+
 ## Nginx中的正则表达式
 
 正则表达式用法（元字符）
@@ -67,6 +71,99 @@ http、server、location这是http模块定义的，在处理一个请求的时�
 - `*`重复零次或更多次
 - `+`重复一次或更多次
 - `?`重复零次或一次
-- `{n}`重复n次
+- `{n}`重复n次   只出现四次，`\d{4}`
 - `{n,}`重复n次或更多次
 - `{n,m}`重复n到m次
+
+
+
+## 如何找到处理请求的server指令块
+
+一个请求被哪个server处理，靠的是`server_name`
+
+### server_name指令
+
+指令后可以跟多个域名，第一个是主域名
+
+也支持泛域名：仅支持在最前或者最后 例如：server_name *.taohui.tech
+
+还支持正则表达式 例如：server_name www.taohui.tech ~^www\d+\\.taohui\\.tech$
+
+支持用正则表达式创建变量：
+
+```nginx
+server{
+    server_name ~^(www\.)?(.+)$;
+    location/ {root/site/$2;}
+}
+
+server{
+    server_name ~^(www\.)?(?<domain>.+)$; #命名变量
+    location/ {root/site/$domain;}
+}
+```
+
+------
+
+### server_name匹配顺序
+
+1. 精准匹配  一个完整的域名字符串，与域名顺序无关
+2. *在前的泛域名 
+3. *在后的泛域名
+4. 按文件中的顺序匹配正则表达式域名
+5. `default server` 指定第一个，listen端口指定默认
+
+
+
+## HTTP请求的11个阶段
+
+|                |                        |                                            |
+| :------------: | :--------------------: | :----------------------------------------: |
+|   POST_READ    | 读到所有的请求头部之后 |         realip，获取到一些原始的值         |
+| SERVER_REWRITE |                        |                  rewrite                   |
+|  FIND_CONFIG   |                        |                                            |
+|    REWRITE     |                        |                  rewrite                   |
+|  POST_REWRITE  |                        |                                            |
+|   PREACCESS    |     确认访问权限，     | limit_conn,limit_req根据连接数、速度限制等 |
+|     ACCESS     |                        |       auth_basic,access,auth_request       |
+|  POST_ACCESS   |                        |                                            |
+|   PRECONTENT   |                        |                try_files，                 |
+|    CONTENT     |                        |           index,autoindex,concat           |
+|      LOG       |                        |               打印access_log               |
+
+所有请求按照这11个阶段顺序依次调用HTTP模块进行请求。
+
+![](images\Snipaste_2022-05-02_16-06-02.png)
+
+### postread阶段
+
+用于发现用户请求的真实ip地址，利于后续处理中根据ip地址限速、限流。
+
+如何拿到真实的用于IP地址
+
+- TCP连接四元组（src ip, src port, dst ip, dst port） 
+- HTTP头部X-Formwarded-For 用于传递IP
+- HTTP头部X-Real-IP用于传递用户IP
+- 网络中存在许多反向代理
+
+
+
+### rewrite阶段: return指令
+
+```nginx
+return code [text];
+return code URL;
+return URL;
+```
+
+返回状态码：
+
+- Nginx自定义
+  - 444： 关闭连接
+- HTTP 1.0标准
+  - 301： http1.0永久重定向
+  - 302：临时重定向，禁止被缓存
+- HTTP 1.1标准
+  - 303：临时重定向，允许改变方法，禁止被缓存
+  - 307：临时重定向，不允许改变方法，禁止被缓存
+  - 308：永久重定向，不允许改变方法
